@@ -115,7 +115,7 @@ export function SpeakingExam({ onComplete }: { onComplete: (result: any) => void
     );
   }
 
-  if (!examData || !examData.points) {
+  if (!examData || !examData.teil1) {
     return (
       <div className="text-center p-8 text-red-400">Failed to generate exam. Please refresh.</div>
     );
@@ -123,15 +123,39 @@ export function SpeakingExam({ onComplete }: { onComplete: (result: any) => void
 
   return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-8 text-center space-y-4">
-        <h3 className="font-semibold text-purple-400 text-sm uppercase tracking-wider mb-2">Aufgabe (Speaking)</h3>
-        <p className="text-foreground text-lg leading-relaxed max-w-lg mx-auto font-medium">{examData.scenario}</p>
-        <div className="text-muted-foreground text-sm max-w-md mx-auto space-y-1 mt-4">
-          {examData.points.map((pt: string, i: number) => (
-            <p key={i}>• {pt}</p>
-          ))}
-        </div>
-      </motion.div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Teil 1 */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6 text-center space-y-4">
+          <h3 className="font-semibold text-purple-400 text-sm uppercase tracking-wider mb-2">Teil 1</h3>
+          <p className="text-foreground font-medium text-sm">{examData.teil1.scenario}</p>
+          <div className="text-muted-foreground text-xs space-y-1 mt-2 text-left bg-white/5 p-3 rounded-xl">
+            {examData.teil1.points.map((pt: string, i: number) => <p key={i}>• {pt}</p>)}
+          </div>
+        </motion.div>
+        
+        {/* Teil 2 */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card rounded-2xl p-6 text-center space-y-4">
+          <h3 className="font-semibold text-purple-400 text-sm uppercase tracking-wider mb-2">Teil 2</h3>
+          <p className="text-foreground font-medium text-sm">{examData.teil2.scenario}</p>
+          <p className="text-emerald-400 text-xs font-semibold">{examData.teil2.theme}</p>
+          <div className="flex flex-wrap justify-center gap-2 mt-2">
+            {examData.teil2.words.map((pt: string, i: number) => (
+              <span key={i} className="bg-white/10 px-2 py-1 rounded-md text-xs">{pt}</span>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Teil 3 */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass-card rounded-2xl p-6 text-center space-y-4">
+          <h3 className="font-semibold text-purple-400 text-sm uppercase tracking-wider mb-2">Teil 3</h3>
+          <p className="text-foreground font-medium text-sm">{examData.teil3.scenario}</p>
+          <div className="flex flex-wrap justify-center gap-2 mt-2">
+            {examData.teil3.objects.map((pt: string, i: number) => (
+              <span key={i} className="bg-purple-500/20 text-purple-300 border border-purple-500/30 px-2 py-1 rounded-md text-xs">{pt}</span>
+            ))}
+          </div>
+        </motion.div>
+      </div>
 
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card rounded-2xl p-10 flex flex-col items-center justify-center min-h-[300px]">
         

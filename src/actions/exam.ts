@@ -133,85 +133,145 @@ export async function submitExamMultipleChoice(sectionId: string, score: number,
 }
 
 export async function generateExamQuestion(sectionId: string) {
-  // Fallback content so the exam always works even when API is rate-limited
+  // Complex fallbacks matching the new multi-part structure
   const fallbacks: Record<string, any> = {
     horen: {
-      context: "Achtung, eine Durchsage am Hauptbahnhof: Der ICE 597 nach München Hauptbahnhof über Augsburg fährt heute von Gleis 14 ab. Abfahrt ist um 10 Uhr 35. Der Zug hat circa 10 Minuten Verspätung. Wir bitten um Ihr Verständnis. Bitte beachten Sie: Das Bordbistro im Wagen 7 ist heute geschlossen.",
-      questions: [
-        { id: 1, question: "Wohin fährt der Zug?", options: ["Nach Berlin", "Nach München", "Nach Hamburg"], answer: 1 },
-        { id: 2, question: "Von welchem Gleis fährt der Zug?", options: ["Gleis 7", "Gleis 10", "Gleis 14"], answer: 2 },
-        { id: 3, question: "Wie viel Verspätung hat der Zug?", options: ["5 Minuten", "10 Minuten", "15 Minuten"], answer: 1 }
-      ]
+      teil1: {
+        context: "Dialog: 'Guten Tag, ich suche ein Ticket nach Frankfurt.' 'Einfach oder hin und zurück?' 'Hin und zurück bitte.'",
+        questions: [{ id: 1, question: "Wohin möchte der Mann fahren?", options: ["Nach Berlin", "Nach Frankfurt", "Nach München"], answer: 1 }]
+      },
+      teil2: {
+        context: "Achtung am Gleis 4: Der ICE nach Hamburg hat 20 Minuten Verspätung.",
+        questions: [{ id: 1, question: "Der Zug ist pünktlich.", options: ["Richtig", "Falsch"], answer: 1 }]
+      },
+      teil3: {
+        context: "Hallo Anna, hier ist Peter. Wir treffen uns um 18 Uhr am Kino. Bis später!",
+        questions: [{ id: 1, question: "Wann treffen sie sich?", options: ["Um 17 Uhr", "Um 18 Uhr", "Um 19 Uhr"], answer: 1 }]
+      }
     },
     lesen: {
-      context: "Liebe Grüße aus Berlin!\nDas Wetter ist wunderschön und die Sonne scheint jeden Tag.\nGestern war ich im Pergamonmuseum, das war sehr interessant.\nAm Abend haben wir in einem kleinen italienischen Restaurant gegessen. Die Pizza war lecker!\nMorgen fahre ich mit dem Zug nach München.\nBis bald,\nAnna",
-      questions: [
-        { id: 1, question: "Wo ist Anna gerade?", options: ["In München", "In Berlin", "In Italien"], answer: 1 },
-        { id: 2, question: "Wie ist das Wetter?", options: ["Es regnet", "Es ist kalt", "Die Sonne scheint"], answer: 2 },
-        { id: 3, question: "Was macht Anna morgen?", options: ["Sie geht ins Museum", "Sie fährt nach München", "Sie isst Pizza"], answer: 1 }
-      ]
+      teil1: {
+        context: "Lieber Max, ich bin in Berlin. Das Wetter ist super. Ich habe das Brandenburger Tor gesehen. Morgen fahre ich zurück. Gruß, Anna",
+        questions: [{ id: 1, question: "Anna ist in München.", options: ["Richtig", "Falsch"], answer: 1 }]
+      },
+      teil2: {
+        context: "Webseite: 'Lernen Sie Deutsch online! Kurs A1 beginnt am Montag. Preis: 100 Euro.'",
+        questions: [{ id: 1, question: "Was kostet der Kurs?", options: ["50 Euro", "100 Euro"], answer: 1 }]
+      },
+      teil3: {
+        context: "Schild am Restaurant: 'Montags geschlossen'",
+        questions: [{ id: 1, question: "Man kann am Montag hier essen.", options: ["Richtig", "Falsch"], answer: 1 }]
+      }
     },
     schreiben: {
-      scenario: "Sie möchten am Wochenende einen Ausflug machen. Schreiben Sie eine E-Mail an Ihre Freundin Maria:",
-      points: ["Wohin wollen Sie fahren?", "Wann wollen Sie fahren?", "Was soll Maria mitbringen?"]
+      teil1: {
+        scenario: "Ihr Freund Carlos (aus Madrid) möchte einen Deutschkurs in Berlin machen. Füllen Sie das Formular für ihn aus.",
+        fields: ["Vorname", "Nachname", "Wohnort", "Heimatland", "Kurs"]
+      },
+      teil2: {
+        scenario: "Sie möchten am Wochenende einen Ausflug machen. Schreiben Sie eine E-Mail an Ihre Freundin Maria:",
+        points: ["Wohin wollen Sie fahren?", "Wann wollen Sie fahren?", "Was soll Maria mitbringen?"]
+      }
     },
     sprechen: {
-      scenario: "Stellen Sie sich vor (Introduce yourself).",
-      points: ["Sagen Sie Ihren Namen (Say your name)", "Woher kommen Sie? (Where are you from?)", "Welche Sprachen sprechen Sie? (What languages do you speak?)"]
+      teil1: {
+        scenario: "Teil 1: Stellen Sie sich vor. (Introduce yourself.)",
+        points: ["Name", "Alter", "Land", "Wohnort", "Sprachen", "Beruf", "Hobby"]
+      },
+      teil2: {
+        scenario: "Teil 2: Um Informationen bitten. (Ask and answer questions.)",
+        theme: "Thema: Essen und Trinken",
+        words: ["Frühstück", "Fleisch", "Lieblingsessen"]
+      },
+      teil3: {
+        scenario: "Teil 3: Bitten formulieren. (Make requests and respond.)",
+        objects: ["Ein Glas Wasser", "Einen Stift", "Die Rechnung bitte"]
+      }
     }
   };
 
   try {
-    const apiKey = getRandomGeminiKey();
-    if (!apiKey) throw new Error("API key not configured");
-    const ai = new GoogleGenAI({ apiKey });
-
     let systemInstruction = '';
+    const topics = ["Reisen (Travel)", "Einkaufen (Shopping)", "Gesundheit (Health)", "Arbeit (Work)", "Freizeit (Free time)", "Wohnen (Living)"];
+    const randomTopic = topics[Math.floor(Math.random() * topics.length)];
     
     if (sectionId === 'horen') {
       systemInstruction = `
-        You are a Goethe-Institut A1 exam creator. 
-        Generate a listening comprehension task (Hören).
-        Return JSON strictly matching this schema:
+        You are an official Goethe-Institut A1 examiner. Generate a Hören (Listening) exam.
+        Topic: ${randomTopic}
+        You must return a JSON object exactly like this:
         {
-          "context": "A short, realistic German announcement or voicemail transcript (e.g. at a train station or supermarket)",
-          "questions": [
-            { "id": 1, "question": "Question in German", "options": ["Option A", "Option B", "Option C"], "answer": 0 }
-          ]
+          "teil1": {
+            "context": "Short dialogues (Teil 1).",
+            "questions": [{ "id": 1, "question": "...", "options": ["A", "B", "C"], "answer": 0 }]
+          },
+          "teil2": {
+            "context": "Public announcements (Teil 2).",
+            "questions": [{ "id": 1, "question": "...", "options": ["Richtig", "Falsch"], "answer": 0 }]
+          },
+          "teil3": {
+            "context": "Phone voicemails (Teil 3).",
+            "questions": [{ "id": 1, "question": "...", "options": ["A", "B", "C"], "answer": 0 }]
+          }
         }
-        Generate exactly 3 questions.
+        Generate 2 questions per Teil. Everything must be strictly A1 level German.
       `;
     } else if (sectionId === 'lesen') {
       systemInstruction = `
-        You are a Goethe-Institut A1 exam creator. 
-        Generate a reading comprehension task (Lesen).
-        Return JSON strictly matching this schema:
+        You are an official Goethe-Institut A1 examiner. Generate a Lesen (Reading) exam.
+        Topic: ${randomTopic}
+        You must return a JSON object exactly like this:
         {
-          "context": "A short A1-level German email, letter, or advertisement.",
-          "questions": [
-            { "id": 1, "question": "Question in German", "options": ["Option A", "Option B", "Option C"], "answer": 0 }
-          ]
+          "teil1": {
+            "context": "2 short emails or letters (Teil 1).",
+            "questions": [{ "id": 1, "question": "...", "options": ["Richtig", "Falsch"], "answer": 0 }]
+          },
+          "teil2": {
+            "context": "Information signs or web pages (Teil 2).",
+            "questions": [{ "id": 1, "question": "...", "options": ["A", "B"], "answer": 0 }]
+          },
+          "teil3": {
+            "context": "Public signs at a station/street (Teil 3).",
+            "questions": [{ "id": 1, "question": "...", "options": ["Richtig", "Falsch"], "answer": 0 }]
+          }
         }
-        Generate exactly 3 questions.
+        Generate 2 questions per Teil. Strictly A1 level.
       `;
     } else if (sectionId === 'schreiben') {
       systemInstruction = `
-        You are a Goethe-Institut A1 exam creator. 
-        Generate a writing task (Schreiben Teil 2).
-        Return JSON strictly matching this schema:
+        You are an official Goethe-Institut A1 examiner. Generate a Schreiben (Writing) exam.
+        Topic: ${randomTopic}
+        Return JSON exactly like this:
         {
-          "scenario": "The prompt in German (e.g. 'Sie möchten am Wochenende einen Ausflug machen. Schreiben Sie eine E-Mail an Ihre Freundin Maria:')",
-          "points": ["Bullet point 1 in German", "Bullet point 2 in German", "Bullet point 3 in German"]
+          "teil1": {
+            "scenario": "A short story about a person who needs a form filled out. Include their Name, Age, City, Country, and Profession in the text.",
+            "fields": ["Name", "Alter", "Wohnort", "Heimatland", "Beruf"]
+          },
+          "teil2": {
+            "scenario": "The prompt in German (e.g. 'Schreiben Sie eine E-Mail an...')",
+            "points": ["Bullet point 1", "Bullet point 2", "Bullet point 3"]
+          }
         }
       `;
     } else if (sectionId === 'sprechen') {
       systemInstruction = `
-        You are a Goethe-Institut A1 exam creator. 
-        Generate a speaking task (Sprechen).
-        Return JSON strictly matching this schema:
+        You are an official Goethe-Institut A1 examiner. Generate a Sprechen (Speaking) exam.
+        Topic: ${randomTopic}
+        Return JSON exactly like this:
         {
-          "scenario": "The prompt in German and English (e.g. 'Stellen Sie sich vor (Introduce yourself).')",
-          "points": ["What to include in English/German 1", "Point 2", "Point 3"]
+          "teil1": {
+            "scenario": "Teil 1: Stellen Sie sich vor. (Introduce yourself.)",
+            "points": ["Name", "Alter", "Land", "Wohnort", "Sprachen", "Beruf", "Hobby"]
+          },
+          "teil2": {
+            "scenario": "Teil 2: Um Informationen bitten. (Ask and answer questions.)",
+            "theme": "Thema: ${randomTopic}",
+            "words": ["Word 1", "Word 2", "Word 3"]
+          },
+          "teil3": {
+            "scenario": "Teil 3: Bitten formulieren. (Make requests and respond.)",
+            "objects": ["Object 1", "Object 2", "Object 3"]
+          }
         }
       `;
     }
@@ -228,7 +288,7 @@ export async function generateExamQuestion(sectionId: string) {
         const ai = new GoogleGenAI({ apiKey: key });
         const response = await ai.models.generateContent({
           model: 'gemini-flash-latest',
-          contents: 'Generate the exam task in JSON format.',
+          contents: 'Generate the exam task in JSON format. Ensure all strings are properly escaped.',
           config: {
             systemInstruction,
             responseMimeType: 'application/json'
@@ -236,13 +296,13 @@ export async function generateExamQuestion(sectionId: string) {
         });
 
         parsed = JSON.parse(response.text || '{}');
-        if (parsed && (parsed.questions || parsed.points)) {
+        // Check for presence of 'teil1' to validate new structure
+        if (parsed && parsed.teil1) {
           return parsed; // Success!
         }
       } catch (e: any) {
         lastError = e;
-        console.warn(`Exam generation failed for a key:`, e.message?.substring(0, 120));
-        // Loop continues to next key
+        console.warn(\`Exam generation failed for a key: \${e.message?.substring(0, 120)}\`);
       }
     }
 
@@ -256,4 +316,3 @@ export async function generateExamQuestion(sectionId: string) {
     return fallbacks[sectionId] || null;
   }
 }
-
