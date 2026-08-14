@@ -1,8 +1,9 @@
 import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
 import type { AdapterAccount } from 'next-auth/adapters';
+import { randomUUID } from 'crypto';
 
 export const users = sqliteTable('users', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey().$defaultFn(() => randomUUID()),
   name: text('name'),
   email: text('email').unique(),
   emailVerified: integer('emailVerified', { mode: 'timestamp_ms' }),
@@ -119,7 +120,7 @@ export const lessons = sqliteTable('lessons', {
 });
 
 export const conversations = sqliteTable('conversations', {
-  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  id: text('id').primaryKey().$defaultFn(() => randomUUID()),
   userId: text('user_id').references(() => users.id).notNull(),
   scenarioType: text('scenario_type'),
   difficulty: text('difficulty'),
