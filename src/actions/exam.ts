@@ -5,7 +5,7 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { GoogleGenAI } from '@google/genai';
-import { getRandomGeminiKey } from '@/lib/gemini';
+import { getRandomGeminiKey, getAllGeminiKeys } from '@/lib/gemini';
 
 export async function submitExamWriting(sectionId: string, answerText: string) {
   const session = await auth();
@@ -200,10 +200,16 @@ export async function generateExamQuestion(sectionId: string) {
       `;
     }
 
-    // Retry up to 3 times with exponential backoff
+    const keys = getAllGeminiKeys();
+    if (keys.length === 0) throw new Error("API keys not configured");
+    const shuffledKeys = [...keys].sort(() => Math.random() - 0.5);
+
     let lastError: any = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    let parsed: any = null;
+
+    for (const key of shuffledKeys) {
       try {
+        const ai = new GoogleGenAI({ apiKey: key });
         const response = await ai.models.generateContent({
           model: 'gemini-flash-latest',
           contents: 'Generate the exam task in JSON format.',
@@ -213,24 +219,21 @@ export async function generateExamQuestion(sectionId: string) {
           }
         });
 
-        const parsed = JSON.parse(response.text || '{}');
+        parsed = JSON.parse(response.text || '{}');
         if (parsed && (parsed.questions || parsed.points)) {
-          return parsed;
+          return parsed; // Success!
         }
       } catch (e: any) {
         lastError = e;
-        console.error(`Exam generation attempt ${attempt + 1} failed:`, e.message?.substring(0, 120));
-        if (e.message?.includes('429') || e.message?.includes('RESOURCE_EXHAUSTED')) {
-          // Wait before retry: 2s, 4s, 8s
-          await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempt)));
-          continue;
-        }
-        break; // Non-retryable error
+        console.warn(`Exam generation failed for a key:`, e.message?.substring(0, 120));
+        // Loop continues to next key
       }
     }
 
-    console.warn('All AI attempts failed, using fallback content for:', sectionId);
-    return fallbacks[sectionId] || null;
+    if (!parsed) {
+      console.warn('All AI attempts failed, using fallback content for:', sectionId);
+      return fallbacks[sectionId] || null;
+    }
 
   } catch (err) {
     console.error('Exam Generation Error:', err);
