@@ -1,15 +1,14 @@
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
-import { getRandomGeminiKey } from '@/lib/gemini';
+import { getAllGeminiKeys } from '@/lib/gemini';
 
 export async function POST(req: Request) {
   try {
-    const apiKey = getRandomGeminiKey();
-    if (!apiKey) {
+    const keys = getAllGeminiKeys();
+    if (keys.length === 0) {
       return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 });
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
     const { messages, scenario, cefrLevel = 'A1-A2' } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
@@ -31,34 +30,6 @@ Follow these rules:
 6. End your response with a simple follow-up question to keep the conversation going.
 `;
 
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-flash-latest',
-      systemInstruction: SYSTEM_PROMPT,
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: SchemaType.OBJECT,
-          properties: {
-            userGermanTranslation: {
-              type: SchemaType.STRING,
-              description: "The German translation of the user's input if they spoke English. Empty if they spoke German.",
-            },
-            tutorGerman: {
-              type: SchemaType.STRING,
-              description: "Your conversational response in German.",
-            },
-            tutorEnglish: {
-              type: SchemaType.STRING,
-              description: "The English translation of your tutorGerman response.",
-            }
-          },
-          required: ["tutorGerman", "tutorEnglish", "userGermanTranslation"]
-        }
-      }
-    });
-
-    // Format entire conversation history into a single prompt for generateContent
-    // This avoids schema conflicts that happen when passing raw text into startChat history while responseSchema is enabled.
     const conversationText = messages.map((msg: any) => {
       const sender = msg.sender === 'user' ? 'Student' : 'Tutor';
       return `${sender}: ${msg.text}`;
@@ -80,23 +51,45 @@ Task:
 3. Translate the Tutor's German response into English. Put this in 'tutorEnglish'.
 `;
 
+    // Shuffle keys so we start with a random one
+    const shuffledKeys = [...keys].sort(() => Math.random() - 0.5);
+    
     let result;
-    let retries = 3;
-    while (retries > 0) {
+    let lastError;
+
+    // Try each key sequentially if one fails
+    for (const apiKey of shuffledKeys) {
       try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+          model: 'gemini-flash-latest',
+          systemInstruction: SYSTEM_PROMPT,
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: SchemaType.OBJECT,
+              properties: {
+                userGermanTranslation: { type: SchemaType.STRING },
+                tutorGerman: { type: SchemaType.STRING },
+                tutorEnglish: { type: SchemaType.STRING }
+              },
+              required: ["tutorGerman", "tutorEnglish", "userGermanTranslation"]
+            }
+          }
+        });
+
         result = await model.generateContent(prompt);
-        break; // Success
+        break; // Success! Break out of the loop
       } catch (e: any) {
-        if (e.message?.includes('503') && retries > 1) {
-          retries--;
-          await new Promise(r => setTimeout(r, 2000)); // wait 2s before retry
-          continue;
-        }
-        throw e; // throw if it's not a 503 or we're out of retries
+        console.warn(`Key failed (${apiKey.substring(0, 8)}...):`, e.message);
+        lastError = e;
+        // Continue to the next key in the loop
       }
     }
     
-    if (!result) throw new Error("Failed to generate content after retries");
+    if (!result) {
+      throw lastError || new Error("All API keys failed");
+    }
 
     const responseText = result.response.text();
     const responseJson = JSON.parse(responseText);
@@ -107,11 +100,7 @@ Task:
       userGermanTranslation: responseJson.userGermanTranslation
     });
   } catch (error: any) {
-    console.error('Gemini API Error:', error);
-    // Return a friendly message if the API is completely overloaded
-    if (error.message?.includes('503')) {
-      return NextResponse.json({ error: 'The AI Tutor is currently experiencing high demand. Please wait a moment and try again.' }, { status: 503 });
-    }
+    console.error('Gemini API Exhausted:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
