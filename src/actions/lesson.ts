@@ -4,10 +4,12 @@ import { db } from '@/db';
 import { lessons } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
+import { getRandomGeminiKey } from '@/lib/gemini';
 
 export async function generateLessonPlan(lessonId: number) {
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+    const apiKey = getRandomGeminiKey();
+    const genAI = new GoogleGenerativeAI(apiKey);
     
     // 1. Fetch lesson topic from DB
     const lessonResult = await db.select().from(lessons).where(eq(lessons.id, lessonId));

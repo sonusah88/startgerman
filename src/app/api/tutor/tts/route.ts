@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
+import { getRandomGeminiKey } from '@/lib/gemini';
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
 export async function POST(req: Request) {
   try {
+    const GEMINI_API_KEY = getRandomGeminiKey();
     const { text, voiceId = 'pNInz6obbfDQGcgMyIGb' } = await req.json(); // Default voice
 
     if (!text || typeof text !== 'string') {

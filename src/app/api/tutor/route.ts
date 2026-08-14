@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { getRandomGeminiKey } from '@/lib/gemini';
 
 export async function POST(req: Request) {
   try {
+    const ai = new GoogleGenAI({ apiKey: getRandomGeminiKey() });
     const body = await req.json();
     const { history, message, level = 'A1.1' } = body;
 

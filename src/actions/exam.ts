@@ -5,14 +5,17 @@ import { db } from '@/db';
 import { users } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { GoogleGenAI } from '@google/genai';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { getRandomGeminiKey } from '@/lib/gemini';
 
 export async function submitExamWriting(sectionId: string, answerText: string) {
   const session = await auth();
   if (!session?.user?.email) return null;
 
   try {
+    const apiKey = getRandomGeminiKey();
+    if (!apiKey) throw new Error("API key not configured");
+    const ai = new GoogleGenAI({ apiKey });
+
     const systemInstruction = `
       You are an official Goethe-Institut examiner grading an A1 level writing test (Schreiben).
       The user wrote the following text: "${answerText}".
@@ -55,6 +58,10 @@ export async function submitExamSpeaking(audioBase64: string, mimeType: string =
   if (!session?.user?.email) return null;
 
   try {
+    const apiKey = getRandomGeminiKey();
+    if (!apiKey) throw new Error("API key not configured");
+    const ai = new GoogleGenAI({ apiKey });
+
     const systemInstruction = `
       You are an official Goethe-Institut examiner grading an A1 level speaking test (Sprechen).
       The user submitted an audio recording introducing themselves or answering a basic A1 question.
@@ -139,6 +146,10 @@ export async function generateExamQuestion(sectionId: string) {
   };
 
   try {
+    const apiKey = getRandomGeminiKey();
+    if (!apiKey) throw new Error("API key not configured");
+    const ai = new GoogleGenAI({ apiKey });
+
     let systemInstruction = '';
     
     if (sectionId === 'horen') {

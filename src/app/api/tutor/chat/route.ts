@@ -1,14 +1,15 @@
 import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 import { NextResponse } from 'next/server';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+import { getRandomGeminiKey } from '@/lib/gemini';
 
 export async function POST(req: Request) {
   try {
-    if (!process.env.GEMINI_API_KEY) {
+    const apiKey = getRandomGeminiKey();
+    if (!apiKey) {
       return NextResponse.json({ error: 'Gemini API key is not configured' }, { status: 500 });
     }
 
+    const genAI = new GoogleGenerativeAI(apiKey);
     const { messages, scenario, cefrLevel = 'A1-A2' } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
