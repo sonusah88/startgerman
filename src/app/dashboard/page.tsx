@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Play, MessageCircle, RefreshCw, GraduationCap, BookOpen, Headphones, FileText, Mic, Brain, Languages, Home, Map, BookA, Bot, User, Flame, Gem, ChevronRight, Video, Pen, BookText, PenSquare } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getUserProgress } from '@/actions/user';
 import { CardContainer, CardBody, CardItem } from '@/components/ui/3d-card';
 
