@@ -8,6 +8,14 @@ import { getRandomGeminiKey, getAllGeminiKeys } from '@/lib/gemini';
 
 export async function generateLessonPlan(lessonId: number) {
   try {
+    // 1. Fetch lesson topic from DB
+    const lessonResult = await db.select().from(lessons).where(eq(lessons.id, lessonId));
+    const lesson = lessonResult[0];
+
+    if (!lesson) {
+      throw new Error("Lesson not found");
+    }
+
     const prompt = `Generate a 5-step lesson plan for the topic: "${lesson.title}". Make sure there are exactly 2 'input' steps, 1 'grammar' step, and 2 'practice' steps.`;
     
     const keys = getAllGeminiKeys();
