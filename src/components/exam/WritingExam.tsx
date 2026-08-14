@@ -37,17 +37,17 @@ export function WritingExam({ onComplete }: { onComplete: (result: any) => void 
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    const fullText = \`
+    const fullText = `
 TEIL 1 (Formular ausfüllen):
-Szenario: \${examData.teil1.scenario}
+Szenario: ${examData.teil1.scenario}
 User Responses:
-\${Object.entries(formAnswers).map(([k, v]) => \`- \${k}: \${v}\`).join('\\n')}
+${Object.entries(formAnswers).map(([k, v]) => `- ${k}: ${v}`).join('\n')}
 
 TEIL 2 (E-Mail schreiben):
-Szenario: \${examData.teil2.scenario}
+Szenario: ${examData.teil2.scenario}
 User Email:
-\${emailAnswer}
-\`;
+${emailAnswer}
+`;
     const grading = await submitExamWriting('schreiben', fullText);
     setIsSubmitting(false);
     onComplete(grading);
@@ -74,7 +74,7 @@ User Email:
         <span>Teil {currentPart} von 2</span>
         <div className="flex gap-1">
           {[1,2].map(i => (
-            <div key={i} className={\`w-2 h-2 rounded-full \${currentPart >= i ? 'bg-amber-500' : 'bg-white/10'}\`} />
+            <div key={i} className={`w-2 h-2 rounded-full ${currentPart >= i ? 'bg-amber-500' : 'bg-white/10'}`} />
           ))}
         </div>
       </div>
@@ -98,7 +98,7 @@ User Email:
                         value={formAnswers[field] || ''}
                         onChange={(e) => handleFormChange(field, e.target.value)}
                         className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-                        placeholder={\`Ihre Antwort...\`}
+                        placeholder={`Ihre Antwort...`}
                       />
                     </div>
                   ))}

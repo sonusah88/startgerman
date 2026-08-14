@@ -1,17 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { submitExamMultipleChoice, generateExamQuestion } from '@/actions/exam';
-import { Loader2, ArrowRight, Play, Pause, RefreshCw } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Loader2, ArrowRight, Play, Pause, RefreshCw, Volume2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export function ListeningExam({ onComplete }: { onComplete: (result: any) => void }) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [selections, setSelections] = useState<Record<number, number>>({});
+  const [answers, setAnswers] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [examData, setExamData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPart, setCurrentPart] = useState(1);
+  const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
     const fetchExam = async () => {
@@ -68,6 +70,9 @@ export function ListeningExam({ onComplete }: { onComplete: (result: any) => voi
       utterance.onend = () => setIsPlaying(false);
       utterance.onerror = () => setIsPlaying(false);
       window.speechSynthesis.speak(utterance);
+    }
+  };
+
   const handleSelect = (questionIndex: number, optionIndex: number) => {
     setAnswers(prev => ({ ...prev, [`${currentPart}-${questionIndex}`]: optionIndex }));
   };

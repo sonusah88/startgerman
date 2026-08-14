@@ -302,7 +302,7 @@ export async function generateExamQuestion(sectionId: string) {
         }
       } catch (e: any) {
         lastError = e;
-        console.warn(\`Exam generation failed for a key: \${e.message?.substring(0, 120)}\`);
+        console.warn(`Exam generation failed for a key: ${e.message?.substring(0, 120)}`);
       }
     }
 
