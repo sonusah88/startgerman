@@ -14,28 +14,36 @@ export async function POST(req: Request) {
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages format' }, { status: 400 });
     }
+    
+    const isInitialGreeting = messages.length === 0;
 
     const SYSTEM_PROMPT = `
 You are a friendly, encouraging, and highly competent German language tutor.
 Your student is at the ${cefrLevel} level.
+Your student is at the ${cefrLevel} level.
 
-${scenario ? `Current Roleplay Scenario: ${scenario}\nYou must strictly act out your part in this scenario. Keep the conversation realistic and immersive.` : 'You are acting as a general conversational tutor.'}
+${scenario ? `Current Roleplay Scenario: ${scenario}
+You MUST strictly act out your part in this scenario. You are NOT a generic tutor, you are the person the student is interacting with (e.g., the baker, the ticket agent). Keep the conversation realistic, immersive, and strictly in character.` : 'You are acting as a general conversational tutor.'}
 
 Follow these rules:
 1. You MUST respond using the strict JSON schema provided.
 2. In the 'tutorGerman' field, write your response primarily in German, keeping vocabulary and grammar strictly suitable for a ${cefrLevel} learner. Keep it brief (1-3 sentences maximum).
 3. If the user makes a significant grammar or vocabulary mistake, gently correct them in a friendly way before continuing the conversation.
 4. In the 'tutorEnglish' field, provide the exact English translation of your German response.
-5. In the 'userGermanTranslation' field, if the user's last message was in English, provide the exact German translation of what they said to help them learn. If they spoke in German, leave it empty.
-6. End your response with a simple follow-up question to keep the conversation going.
+5. In the 'userGermanTranslation' field, if the user's last message was in English, provide the exact German translation of what they said to help them learn. If they spoke in German or this is the first message, leave it empty.
+6. End your response with a simple follow-up question or natural continuation to keep the conversation going.
 `;
 
-    const conversationText = messages.map((msg: any) => {
-      const sender = msg.sender === 'user' ? 'Student' : 'Tutor';
-      return `${sender}: ${msg.text}`;
-    }).join('\n\n');
+    const conversationText = isInitialGreeting 
+      ? "(No conversation history yet. You must start the roleplay.)"
+      : messages.map((msg: any) => {
+          const sender = msg.sender === 'user' ? 'Student' : 'Tutor';
+          return `${sender}: ${msg.text}`;
+        }).join('\n\n');
 
-    const lastMessage = messages[messages.length - 1];
+    const lastMessageText = isInitialGreeting 
+      ? "(The student just walked up to you. Start the conversation in character!)"
+      : messages[messages.length - 1].text;
 
     const prompt = `
 Conversation history:
@@ -43,12 +51,12 @@ ${conversationText}
 
 ---
 CURRENT TURN:
-Student's last message: "${lastMessage.text}"
+Student's last message / Situation: "${lastMessageText}"
 
 Task:
-1. If the Student's last message was in English, translate it to German and put it in 'userGermanTranslation'. If it was in German, leave it empty.
-2. Generate the Tutor's next response in German based on the conversation history. Put this in 'tutorGerman'.
-3. Translate the Tutor's German response into English. Put this in 'tutorEnglish'.
+1. If the Student's last message was in English, translate it to German and put it in 'userGermanTranslation'. Otherwise, leave it empty.
+2. Generate your next response in German based on the conversation history and your roleplay scenario. Put this in 'tutorGerman'.
+3. Translate your German response into English. Put this in 'tutorEnglish'.
 `;
 
     // Shuffle keys so we start with a random one

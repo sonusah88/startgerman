@@ -6,23 +6,33 @@ import { TutorScene } from '@/components/3d/Scene';
 import { Button } from '@/components/ui/button';
 import { Mic, ArrowLeft, Settings2, Keyboard, StopCircle, Loader2, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
+import { SCENARIOS } from '@/lib/scenarios';
+import { Suspense } from 'react';
 
 type Message = { sender: 'user' | 'tutor'; text: string; translation?: string };
 
-export default function TutorPage() {
+function TutorPageContent() {
+  const searchParams = useSearchParams();
+  const scenarioId = searchParams.get('scenario');
+  const scenarioContext = scenarioId ? SCENARIOS.find(s => s.id === scenarioId) : null;
+
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [textInput, setTextInput] = useState('');
-  const [transcript, setTranscript] = useState<Message[]>([
-    { sender: 'tutor', text: 'Hello! How can I help you practice your German today?' }
-  ]);
+  
+  // If no scenario, start with default greeting. If scenario, start empty.
+  const [transcript, setTranscript] = useState<Message[]>(
+    scenarioContext ? [] : [{ sender: 'tutor', text: 'Hello! How can I help you practice your German today?' }]
+  );
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const isProcessingRef = useRef(false);
   const transcriptRef = useRef<Message[]>(transcript);
+  const scenarioInitializedRef = useRef(false);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -127,10 +137,15 @@ export default function TutorPage() {
     setIsProcessing(true);
 
     try {
+      const reqBody: any = { messages: history };
+      if (scenarioContext) {
+        reqBody.scenario = `${scenarioContext.title}: ${scenarioContext.desc}`;
+      }
+
       const res = await fetch('/api/tutor/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: history }),
+        body: JSON.stringify(reqBody),
       });
 
       const data = await res.json();
@@ -173,7 +188,15 @@ export default function TutorPage() {
       isProcessingRef.current = false;
       setIsProcessing(false);
     }
-  }, [speakGerman]);
+  }, [speakGerman, scenarioContext]);
+
+  // Initial trigger for scenarios
+  useEffect(() => {
+    if (scenarioContext && transcript.length === 0 && !scenarioInitializedRef.current) {
+      scenarioInitializedRef.current = true;
+      fetchTutorResponse([]);
+    }
+  }, [scenarioContext, transcript.length, fetchTutorResponse]);
 
   // ──────────────────────────────────────────────
   // SEND A USER MESSAGE (shared by mic & keyboard)
@@ -315,9 +338,21 @@ export default function TutorPage() {
       {/* Conversation Area */}
       <div className="w-full md:w-1/2 lg:w-[45%] h-[55vh] md:h-screen flex flex-col glass">
         {/* Chat Header */}
-        <div className="px-6 py-4 border-b border-white/5">
-          <h2 className="font-bold text-lg">AI Tutor</h2>
-          <p className="text-xs text-muted-foreground">German conversation practice</p>
+        <div className="px-6 py-4 border-b border-white/5 bg-white/5">
+          {scenarioContext ? (
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <scenarioContext.icon className="w-5 h-5 text-amber-500" />
+                <h2 className="font-bold text-lg text-amber-400">{scenarioContext.title}</h2>
+              </div>
+              <p className="text-xs text-muted-foreground">{scenarioContext.desc}</p>
+            </div>
+          ) : (
+            <div>
+              <h2 className="font-bold text-lg">AI Tutor</h2>
+              <p className="text-xs text-muted-foreground">German conversation practice</p>
+            </div>
+          )}
         </div>
 
         {/* Messages */}
@@ -448,5 +483,13 @@ export default function TutorPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TutorPage() {
+  return (
+    <Suspense fallback={<div className="flex h-screen items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-amber-500" /></div>}>
+      <TutorPageContent />
+    </Suspense>
   );
 }
