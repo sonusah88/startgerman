@@ -78,6 +78,20 @@ export default function LessonPlayerPage() {
     loadSteps();
   }, [lessonIdStr]);
 
+  // Autoplay TTS when a vocabulary (input) step loads
+  useEffect(() => {
+    if (LESSON_STEPS.length > 0 && currentStep < LESSON_STEPS.length) {
+      const step = LESSON_STEPS[currentStep];
+      if (step.type === 'input' && step.content?.word) {
+        // Small delay to ensure the UI transition has started
+        const timeout = setTimeout(() => {
+          handleSpeak(step.content.word);
+        }, 500);
+        return () => clearTimeout(timeout);
+      }
+    }
+  }, [currentStep, LESSON_STEPS]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

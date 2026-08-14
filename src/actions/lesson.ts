@@ -87,7 +87,51 @@ Keep all vocabulary, grammar, and sentences strictly at the A1 level.`,
 
     return steps;
   } catch (error) {
-    console.error("Failed to generate dynamic lesson:", error);
-    return [];
+    console.error("Failed to generate dynamic lesson, using fallback:", error);
+    
+    // 100% Goethe A1 accurate fallback lesson
+    return [
+      {
+        type: "input",
+        content: {
+          title: "Vocabulary",
+          word: "der Bahnhof",
+          meaning: "the train station",
+          example: "Wo ist der Bahnhof? (Where is the train station?)"
+        }
+      },
+      {
+        type: "input",
+        content: {
+          title: "Vocabulary",
+          word: "das Ticket",
+          meaning: "the ticket",
+          example: "Ich brauche ein Ticket nach Berlin. (I need a ticket to Berlin.)"
+        }
+      },
+      {
+        type: "grammar",
+        content: {
+          title: "Definite Articles",
+          text: "In German, nouns have gender. 'der' is masculine, 'die' is feminine, and 'das' is neuter. Always learn the article with the noun!\n\nExamples:\nder Bahnhof (masculine)\ndie Fahrkarte (feminine)\ndas Ticket (neuter)"
+        }
+      },
+      {
+        type: "practice",
+        content: {
+          question: "Which article is correct for 'Bahnhof'?",
+          options: ["der", "die", "das"],
+          correct: "der"
+        }
+      },
+      {
+        type: "practice",
+        content: {
+          question: "How do you say 'Where is the train station?'",
+          options: ["Wo ist der Bahnhof?", "Wann fährt der Zug?", "Ein Ticket bitte."],
+          correct: "Wo ist der Bahnhof?"
+        }
+      }
+    ];
   }
 }
