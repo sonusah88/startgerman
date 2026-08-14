@@ -59,8 +59,13 @@ export function SpeakingExam({ onComplete }: { onComplete: (result: any) => void
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+    try {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+        mediaRecorderRef.current.stop();
+      }
+    } catch (e) {
+      console.error("Error stopping recorder:", e);
+    } finally {
       setIsRecording(false);
     }
   };

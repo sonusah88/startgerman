@@ -58,9 +58,9 @@ export async function submitExamSpeaking(audioBase64: string, mimeType: string =
   if (!session?.user?.email) return null;
 
   try {
-    const apiKey = getRandomGeminiKey();
-    if (!apiKey) throw new Error("API key not configured");
-    const ai = new GoogleGenAI({ apiKey });
+    const keys = getAllGeminiKeys();
+    if (keys.length === 0) throw new Error("API keys not configured");
+    const shuffledKeys = [...keys].sort(() => Math.random() - 0.5);
 
     const systemInstruction = `
       You are an official Goethe-Institut examiner grading an A1 level speaking test (Sprechen).
@@ -79,19 +79,35 @@ export async function submitExamSpeaking(audioBase64: string, mimeType: string =
       }
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-flash-latest',
-      contents: [
-        { inlineData: { mimeType, data: audioBase64 } },
-        { text: 'Please grade this A1 German speaking recording.' }
-      ],
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json'
-      }
-    });
+    let lastError = null;
+    let result = null;
 
-    const result = JSON.parse(response.text || '{}');
+    for (const key of shuffledKeys) {
+      try {
+        const ai = new GoogleGenAI({ apiKey: key });
+        const response = await ai.models.generateContent({
+          model: 'gemini-flash-latest',
+          contents: [
+            { inlineData: { mimeType, data: audioBase64 } },
+            { text: 'Please grade this A1 German speaking recording.' }
+          ],
+          config: {
+            systemInstruction,
+            responseMimeType: 'application/json'
+          }
+        });
+
+        result = JSON.parse(response.text || '{}');
+        if (result && result.score !== undefined) {
+          return result;
+        }
+      } catch (e: any) {
+        console.warn(`Key failed in submitExamSpeaking:`, e.message);
+        lastError = e;
+      }
+    }
+
+    if (!result) throw lastError || new Error("All API keys failed");
     return result;
 
   } catch (err) {
